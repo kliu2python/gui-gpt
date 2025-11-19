@@ -1,0 +1,64 @@
+import time
+from PIL import Image
+from playwright.sync_api import sync_playwright
+from io import BytesIO
+import os
+
+sleep_time = 1
+
+
+class Driver:
+    def __init__(self) -> None:
+        current_directory = os.getcwd()
+        vimium_xpath = os.path.join(current_directory, "vimium-master")
+        context = sync_playwright().start().chromium.launch_persistent_context(
+            "", 
+            headless=False, 
+            ignore_https_errors=True, 
+            args=[
+                f"--disable-extensions-except={vimium_xpath}",
+                f"--load-extension={vimium_xpath}"
+            ], 
+            record_video_dir="videos"
+        )
+        self.page = context.new_page()
+        self.page.on("console", self.handle_console_message)
+        self.page.set_viewport_size({"width": 1080, "height": 720})
+
+    def _resume_mark(self):
+        self.page.keyboard.press("Escape")
+        self.page.keyboard.type("f")
+
+    def type(self, value):
+        time.sleep(sleep_time)
+        self.page.keyboard.type(value)
+        
+    def click(self, text):
+        time.sleep(sleep_time)
+        self.page.keyboard.type(text=text)
+        
+    def navigate(self, url):
+        self.page.goto(url)
+        
+    def capture_screenshot(self):
+        time.sleep(5)
+        self._resume_mark()
+        screencap = self.page.screenshot()
+        screenshot = Image.open(BytesIO(screencap)).convert("RGB")
+        return screenshot
+    
+    def execute_actions(self, actions):
+        for action in actions:
+            if action['action'] == 'click':
+                self._resume_mark()
+                self.click(action['text'])
+            elif action['action'] == 'type':
+                self.type(action['text'])
+
+    def handle_console_message(self, message):
+        if message.type == "log":
+            print(f"Console.log: {message.text}")
+        elif message.type == "warning":
+            print(f"Console warning: {message.text}")
+        elif message.type == "error":
+            print(f"Console error: {message.text}")
