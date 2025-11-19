@@ -49,6 +49,9 @@ class Driver:
         return screenshot
     
     def execute_actions(self, actions):
+        if actions is None:
+            return
+
         for action in actions:
             if action['action'] == 'click':
                 self._resume_mark()

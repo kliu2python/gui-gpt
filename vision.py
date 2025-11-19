@@ -98,7 +98,7 @@ Remember to respond in JSON only or otherwise bad things will happen."""
     ]})
     
     chat_response = openAI.chat.completions.create(
-        model="Qwen/Qwen3-VL-4B-Instruct-FP8",
+        model="Qwen/Qwen3-VL-4B-Thinking-FP8",
         messages=messages,
         max_tokens=4096
     )
