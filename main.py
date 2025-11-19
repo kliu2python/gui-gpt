@@ -39,6 +39,13 @@ def run_agent(url, task):
             previous_actions=actions[-10:] if len(actions) > 10 else actions,  # Only send last 10 actions
             state_summary=state_summary
         )
+
+        # Handle case when model fails to return valid actions
+        if next_actions is None or len(next_actions) == 0:
+            print("ERROR: Failed to get valid next actions from model")
+            current_action = "error"
+            break
+
         driver.execute_actions(actions=next_actions)
 
         current_action = next_actions[len(next_actions) - 1]["action"]
