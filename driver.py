@@ -35,7 +35,8 @@ class Driver:
         
     def click(self, text):
         time.sleep(sleep_time)
-        self.page.keyboard.type(text=text)
+        # Convert to lowercase to avoid Shift key triggering "open in new tab" in Vimium
+        self.page.keyboard.type(text=text.lower())
         
     def navigate(self, url):
         self.page.goto(url)

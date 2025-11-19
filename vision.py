@@ -35,6 +35,11 @@ CRITICAL RULES:
 Examples of correct action sequences:
 - Login form: [{"action":"click","text":"AB","explanation":"Click username field"}, {"action":"type","text":"admin","explanation":"Enter username"}, {"action":"click","text":"CD","explanation":"Click password field"}, {"action":"type","text":"password123","explanation":"Enter password"}, {"action":"click","text":"EF","explanation":"Click login button"}]
 - Search box: [{"action":"click","text":"AB","explanation":"Click search field"}, {"action":"type","text":"my query","explanation":"Enter search term"}, {"action":"click","text":"CD","explanation":"Click search button"}]
+- Menu navigation: [{"action":"click","text":"AF","explanation":"Click Network menu (hint AF in yellow box)"}]
+
+WRONG examples (DO NOT do this):
+- [{"action":"click","text":"Network","explanation":"..."}] ❌ WRONG - "Network" is the menu name, not the hint
+- [{"action":"click","text":"Dashboard","explanation":"..."}] ❌ WRONG - Use the yellow box hint like "DA" instead
 
 To determine the best next action, break down your internal thought process into the following steps:
 
@@ -46,7 +51,13 @@ IMPORTANT: For each input field you need to fill, break it down into TWO steps:
 
 ## Step 2
 Next, take the first step from the list you have generated and determine which action (click, type, wait, error, or finish) you need to conduct in order to move forward with the given task.
-If you need to click something on the page, determine the string inside the yellow box that is attached to the item you want to click on. Only determine the string in the yellow box, do not include any other strings.
+
+IMPORTANT FOR CLICKING: If you need to click something on the page, you MUST identify the SHORT CHARACTER SEQUENCE (hint) inside the yellow box that appears next to the item.
+- The yellow box contains a SHORT hint like "AB", "CD", "AA", "DA", etc. (usually 1-3 characters)
+- DO NOT use the menu item name (like "Network", "Dashboard", "System") - use ONLY the yellow box hint
+- Example: If you want to click "Network" menu item and it has a yellow box showing "AF", return "AF" as the text, NOT "Network"
+- These hints are case-insensitive, so you can use either uppercase or lowercase
+
 If you need to type something on the page, make sure the previous action was a click to focus the input field.
 
 ## Step 3
