@@ -15,7 +15,9 @@ def run_agent(url, task):
     }
     loop_detection = {
         "recent_actions": [],
-        "max_repeat": 3
+        "max_repeat": 3,
+        "blocked_actions": [],  # Actions that caused loops and should be avoided
+        "max_blocked": 5  # Max number of different actions we can block before giving up
     }
 
     while current_action != "finish" and current_action != "error":
@@ -23,14 +25,19 @@ def run_agent(url, task):
         screenshot = driver.capture_screenshot()
 
         # Create state summary for the model
+        blocked_actions_str = ", ".join(loop_detection["blocked_actions"]) if loop_detection["blocked_actions"] else "None"
         state_summary = f"""
         Progress tracking:
         - Menu items you have already fully explored: {state['visited_menu_items']}
         - Submenus you have checked in current menu: {state['checked_submenus']}
         - Current menu item you are working on: {state['current_menu_item']}
+        - Actions that caused loops and MUST BE AVOIDED: {blocked_actions_str}
 
-        IMPORTANT: Do not click on menu items that are already in the 'visited_menu_items' list.
-        Move to the next unvisited menu item instead.
+        CRITICAL LOOP PREVENTION:
+        - DO NOT click on any actions listed in 'blocked_actions' - they caused infinite loops
+        - DO NOT click on menu items in 'visited_menu_items' - they are already explored
+        - If you've clicked the same item 2 times in a row, STOP and choose a different action
+        - Move to the next unvisited menu item instead
         """
 
         next_actions = determine_next_action(
@@ -46,20 +53,45 @@ def run_agent(url, task):
             current_action = "error"
             break
 
+        # Loop detection: check if we're about to repeat the same action BEFORE executing
+        current_action = next_actions[len(next_actions) - 1]["action"]
+        action_signature = f"{current_action}:{next_actions[-1].get('text', '')}"
+
+        # Count how many times this action appears in recent history
+        recent_count = loop_detection["recent_actions"].count(action_signature)
+
+        # If same action repeated too many times, block it and retry
+        if recent_count >= loop_detection["max_repeat"]:
+            print(f"WARNING: Detected loop - action '{action_signature}' repeated {loop_detection['max_repeat']} times")
+            print("Consider the agent may be stuck. Recent actions:", loop_detection["recent_actions"])
+
+            # Add this action to blocked list
+            if action_signature not in loop_detection["blocked_actions"]:
+                loop_detection["blocked_actions"].append(action_signature)
+                print(f"Added '{action_signature}' to blocked actions list")
+
+                # Check if we've blocked too many actions - agent is fundamentally stuck
+                if len(loop_detection["blocked_actions"]) >= loop_detection["max_blocked"]:
+                    print(f"ERROR: Blocked {len(loop_detection['blocked_actions'])} different actions. Agent appears fundamentally stuck.")
+                    print(f"Blocked actions: {loop_detection['blocked_actions']}")
+                    current_action = "error"
+                    break
+
+            # Clear recent actions to give model a fresh start
+            loop_detection["recent_actions"] = []
+
+            # Give the model ONE more chance with the blocked action info
+            # If it loops again on a different action, we'll catch it
+            print("Skipping this action and asking model for a different action...")
+            continue  # Skip to next iteration without executing this action
+
+        # Action is safe to execute
         driver.execute_actions(actions=next_actions)
 
-        current_action = next_actions[len(next_actions) - 1]["action"]
-
-        # Loop detection: check if we're repeating the same action
-        action_signature = f"{current_action}:{next_actions[-1].get('text', '')}"
+        # Track this action
         loop_detection["recent_actions"].append(action_signature)
         if len(loop_detection["recent_actions"]) > 5:
             loop_detection["recent_actions"].pop(0)
-
-        # If same action repeated too many times, flag as error
-        if loop_detection["recent_actions"].count(action_signature) >= loop_detection["max_repeat"]:
-            print(f"WARNING: Detected loop - action '{action_signature}' repeated {loop_detection['max_repeat']} times")
-            print("Consider the agent may be stuck. Recent actions:", loop_detection["recent_actions"])
 
         actions.extend(next_actions)
 
