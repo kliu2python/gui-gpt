@@ -4,6 +4,7 @@ from openai import OpenAI
 from io import BytesIO
 import base64
 import json
+import re
 
 load_dotenv()
 
@@ -110,7 +111,30 @@ Remember to respond in JSON only or otherwise bad things will happen."""
     print(f"Number of completion tokens: {chat_response.usage.completion_tokens}")
     
     try:
+        # First try to parse as-is
         json_response = json.loads(content)
         return json_response
     except json.JSONDecodeError:
-        print("Invalid json error")
+        # Handle thinking model responses that contain <think> tags
+        # Extract JSON content after thinking tags
+        # Try to find JSON array in the response
+        # Look for content after </think> tag or find JSON array pattern
+        if '</think>' in content:
+            # Extract content after the last </think> tag
+            json_content = content.split('</think>')[-1].strip()
+        else:
+            json_content = content.strip()
+
+        # Try to find JSON array pattern [...]
+        json_match = re.search(r'\[[\s\S]*\]', json_content)
+        if json_match:
+            try:
+                json_response = json.loads(json_match.group(0))
+                print("Successfully extracted JSON from thinking model response")
+                return json_response
+            except json.JSONDecodeError:
+                pass
+
+        print("Invalid json error - could not parse response")
+        print(f"Response content: {content[:500]}...")  # Print first 500 chars for debugging
+        return None
